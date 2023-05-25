@@ -68,15 +68,15 @@ export class Session {
         this.proxy = sessionOptions?.proxy;
     }
 
-    async getChallenge(): Promise<Challenge> {
+    async getChallenge(): Promise<Challenge | null> {
         const requestData = {
+            token: this.tokenInfo.token,
             sid: this.tokenInfo.r,
             render_type: "canvas",
-            token: this.tokenInfo.token,
-            analytics_tier: this.tokenInfo.at,
             lang: "",
-            apiBreakerVersion: undefined,
-            isAudioGame: undefined
+            isAudioGame: undefined,
+            analytics_tier: this.tokenInfo.at,
+            apiBreakerVersion: undefined
         }
 
         if (this.tokenRaw && this.tokenRaw.challenge_url_cdn.includes('game_core')) {
@@ -97,8 +97,12 @@ export class Session {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept-Language": "en-US,en;q=0.9",
                     "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-Mode": "cors",
+                    "Sec-Fetch-Dest": "empty",
+                    "Origin": this.tokenInfo.surl,
                     "Referer": this.getEmbedUrl(),
                     "X-Requested-With": "XMLHttpRequest",
+                    "X-NewRelic-Timestamp": Date.now().toString()
                 },
             },
             this.proxy
@@ -107,6 +111,11 @@ export class Session {
         let data = JSON.parse(res.body.toString());
         data.token = this.token;
         data.tokenInfo = this.tokenInfo;
+
+        if (data.error === "DENIED ACCESS") {
+            // Do not need to solve challenge
+            return null;
+        }
 
         if (data.game_data.gameType == 1) {
             return new Challenge1(data, {
@@ -132,7 +141,8 @@ export class Session {
     }
 
     getEmbedUrl(): string {
-        return `${this.tokenInfo.surl}/fc/gc/?${util.constructFormData(
+        //https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.12.0/standard/index.html
+        return `${this.tokenInfo.surl}/fc/assets/ec-game-core/game-core/1.12.0/standard/index.html?${util.constructFormData(
             this.tokenInfo
         )}`;
     }

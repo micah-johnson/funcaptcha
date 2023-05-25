@@ -33,6 +33,6 @@ export declare class Session {
     private userAgent;
     private proxy;
     constructor(token: string | GetTokenResult, sessionOptions?: SessionOptions);
-    getChallenge(): Promise<Challenge>;
+    getChallenge(): Promise<Challenge | null>;
     getEmbedUrl(): string;
 }

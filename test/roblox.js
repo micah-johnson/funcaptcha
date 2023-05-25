@@ -101,12 +101,45 @@ undici.request("https://auth.roblox.com/v2/login", {
             },
             site: "https://www.roblox.com",
             location: "https://www.roblox.com/login"
-        })
+        });
+
+        console.log((token.token ? "" : "in") + "valid fingerprint", token);
 
         let session = new funcaptcha.Session(token, {
             userAgent: USER_AGENT,
         })
-        let challenge = await session.getChallenge().catch((err) => console.log('login fail', err))
+        let challenge = await session.getChallenge().catch((err) => {
+            console.log('challenge fail', err);
+        });
+
+        if (!challenge) {
+            let req = await undici.request("https://auth.roblox.com/v2/login", {
+                method: "POST",
+                headers: {
+                    "x-csrf-token": csrf,
+                    "content-type": "application/json",
+                    "user-agent": USER_AGENT,
+                    "rblx-challenge-id": res2.headers["rblx-challenge-id"],
+                    "rblx-challenge-metadata": Buffer.from(JSON.stringify({
+                        "unifiedCaptchaId": fieldData.unifiedCaptchaId,
+                        "captchaToken": token.token,
+                        "actionType": "Login"
+                    })).toString("base64"),
+                    "rblx-challenge-type": "captcha"
+                },
+                body: JSON.stringify({
+                    "ctype": "Username",
+                    "cvalue": "Test",
+                    "password": "Test",
+                })
+            })
+                    
+            let json = await req.body.json();
+            if (json.errors?.[0]?.code === 1) {
+                console.log("Login", "Test passed! (no challenge issued / token generated)");
+                return;
+            }
+        }
 
         console.log("Login", challenge.data.game_data.game_variant, challenge.data.game_data.waves)
 

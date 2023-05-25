@@ -24,7 +24,6 @@
     "repository": "github:badaimweeb/funcaptcha",
     "dependencies": {
         "http2-wrapper": "^2.2.0",
-        "jimp": "^0.22.8",
         "pngjs": "^7.0.0",
         "socks": "^2.7.1",
         "undici": "^5.22.1"

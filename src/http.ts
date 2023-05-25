@@ -20,7 +20,10 @@ async function req(url: string, options: http2.RequestOptions & { body?: string 
         });
     }
 
-    let req = http2.request(url, options);
+    let req = http2.request(url, {
+        agent,
+        ...options
+    });
     if (options.body) req.write(options.body);
     req.end();
 
@@ -39,6 +42,7 @@ async function req(url: string, options: http2.RequestOptions & { body?: string 
     return {
         headers: res.headers,
         body: Buffer.concat(body),
+        status: res.statusCode
     };
 }
 
