@@ -1,4 +1,4 @@
-declare function getFingerprint(canvasFp?: string): {
+declare function getFingerprint(canvasFp?: string, randomCanvasFp?: boolean): {
     DNT: string;
     L: string;
     D: number;
@@ -13,11 +13,11 @@ declare function getFingerprint(canvasFp?: string): {
     ODB: boolean;
     CPUC: string;
     PK: string;
-    CFP: string;
+    CFP: string | boolean;
     FR: boolean;
     FOS: boolean;
     FB: boolean;
-    JSF: string;
+    JSF: string[];
     P: string[];
     T: (number | boolean)[];
     H: number;

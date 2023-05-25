@@ -11,6 +11,7 @@ export interface GetTokenOptions {
     location?: string;
     proxy?: string;
     canvasFp?: string;
+    randomCanvasFp?: boolean;
 }
 export interface GetTokenResult {
     challenge_url: string;

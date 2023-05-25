@@ -1,4 +1,30 @@
-const baseFingerprint = {
+import { PNG } from "pngjs";
+
+const baseFingerprint: {
+    DNT: string;
+    L: string;
+    D: number;
+    PR: number;
+    S: number[];
+    AS: number[];
+    TO: number;
+    SS: boolean;
+    LS: boolean;
+    IDB: boolean;
+    B: boolean;
+    ODB: boolean;
+    CPUC: string;
+    PK: string;
+    CFP: string | boolean;
+    FR: boolean;
+    FOS: boolean;
+    FB: boolean;
+    JSF: string[];
+    P: string[];
+    T: (number | boolean)[];
+    H: number;
+    SWF: boolean;
+} = {
     DNT: "unknown", // Do not track On/Off | Previous Value: 1
     L: "en-US", // Browser language
     D: 24, // Screen color depth (in bits)
@@ -19,7 +45,7 @@ const baseFingerprint = {
     FR: false, // Fake screen resolution?
     FOS: false, // Fake OS?
     FB: false, // Fake Browser?
-    JSF: '', /*[
+    JSF: [
         "Andale Mono",
         "Arial",
         "Arial Black",
@@ -85,12 +111,14 @@ const baseFingerprint = {
         "Wingdings",
         "Wingdings 2",
         "Wingdings 3",
-    ], // Available fonts*/
+    ], // Checked fonts
     P: [
-        "Chrome PDF Plugin::Portable Document Format::application/x-google-chrome-pdf~pdf",
-        "Chrome PDF Viewer::::application/pdf~pdf",
-        "Native Client::::application/x-nacl~,application/x-pnacl~",
-    ], // Plugins
+        'Chrome PDF Viewer::Portable Document Format::application/pdf~pdf,text/pdf~pdf', 
+        'Chromium PDF Viewer::Portable Document Format::application/pdf~pdf,text/pdf~pdf', 
+        'Microsoft Edge PDF Viewer::Portable Document Format::application/pdf~pdf,text/pdf~pdf', 
+        'PDF Viewer::Portable Document Format::application/pdf~pdf,text/pdf~pdf', 
+        'WebKit built-in PDF::Portable Document Format::application/pdf~pdf,text/pdf~pdf'
+    ], // Plugins (standard and CONSTANT)
     T: [0, false, false], // Touch screen (maxTouchPoints, TouchEvent event listener support, ontouchstart support)
     H: 24, // Cpu threads
     SWF: false, // Flash support
@@ -358,28 +386,31 @@ function randomScreenRes() {
 }
 
 // Get fingerprint
-function getFingerprint(canvasFp?: string) {
+function getFingerprint(canvasFp?: string, randomCanvasFp?: boolean) {
     let fingerprint = { ...baseFingerprint }; // Create a copy of the base fingerprint
 
     // Randomization time!
     fingerprint["DNT"] = "unknown"; //Math.round(Math.random());
     fingerprint["L"] = languages[Math.floor(Math.random() * languages.length)];
-    fingerprint["D"] = [1, 4, 8, 15, 16, 24, 32, 48][
-        Math.floor(Math.random() * 8)
-    ];
-    fingerprint["PR"] = Math.round(Math.random() * 100) / 100 * 2 + 0.5;
-    fingerprint["S"] = randomScreenRes();
-    fingerprint["AS"] = [fingerprint["S"][0], fingerprint["S"][1] - 40];
-    fingerprint["TO"] = (Math.floor(Math.random() * 24) - 12) * 60;
-    fingerprint["SS"] = Math.random() > 0.5;
-    fingerprint["LS"] = Math.random() > 0.5;
-    fingerprint["IDB"] = Math.random() > 0.5;
-    fingerprint["B"] = Math.random() > 0.5;
-    fingerprint["ODB"] = Math.random() > 0.5;
+    fingerprint["D"] = [24, 32][
+        Math.floor(Math.random() * 2)
+    ]; // common value only: 24bit/32bit
+    fingerprint["PR"] = [1, 1.25, 1.5, 1.75][
+        Math.floor(Math.random() * 4)
+    ]; // common value only: 1, 1.25, 1.5, 1.75
+    fingerprint["S"] = randomScreenRes().map(x => x / fingerprint["PR"]); // change screen res to match pixel ratio
+    fingerprint["AS"] = fingerprint["S"]; //[fingerprint["S"][0], fingerprint["S"][1] - 40]
+    fingerprint["TO"] = (Math.floor(Math.random() * 24) - 12) * 60; // timezone SHOULD be based on current IP
+    fingerprint["SS"] = true; //Math.random() > 0.5;
+    fingerprint["LS"] = true; //Math.random() > 0.5;
+    fingerprint["IDB"] = true; //Math.random() > 0.5;
+    fingerprint["B"] = false; // IE-only signature, SHOULD NOT EXIST //Math.random() > 0.5;
+    fingerprint["ODB"] = true; // WebSQL, MUST be disabled after November 7, 2023 (Chromium 119). Might TODO base on UA. //Math.random() > 0.5;
     fingerprint["CPUC"] = "unknown"; /*["68K", "Alpha", "PPC", "x86", "Other", "unknown"][
         Math.floor(Math.random() * 5)
     ];*/
-    fingerprint["PK"] = "Win32" /*[
+    fingerprint["PK"] = "Win32" // This SHOULD be based on User Agent. 
+    /*[
         "HP-UX",
         "Mac68K",
         "MacPPC",
@@ -389,22 +420,54 @@ function getFingerprint(canvasFp?: string) {
         "WinCE",
     ][Math.floor(Math.random() * 7)];*/
 
-    fingerprint["CFP"] = `canvas winding:yes~canvas fp:data:image/png;base64,${Buffer.from(
+    let rdCanvas: string;
+    if (typeof randomCanvasFp === "undefined" || randomCanvasFp) {
+        // attempt to randomize canvas fingerprint by generating a random 300x150 PNG image
+        let png = new PNG({
+            height: 150,
+            width: 300,
+        });
+
+        for (let y = 0; y < png.height; y++) {
+            for (let x = 0; x < png.width; x++) {
+                let idx = (png.width * y + x) << 2;
+
+                png.data[idx] = Math.floor(Math.random() * 256);
+                png.data[idx + 1] = Math.floor(Math.random() * 256);
+                png.data[idx + 2] = Math.floor(Math.random() * 256);
+                png.data[idx + 3] = 0xFF;
+            }
+        }
+        var buffer = PNG.sync.write(png, { 
+            colorType: 6, 
+            bitDepth: 8
+        });
+
+        rdCanvas = `data:image/png;base64,${buffer.toString("base64")}`;
+    }
+    fingerprint["CFP"] = canvasFp ?? rdCanvas ?? false; // We CAN randomize data, block canvas fingerprinting, or BYOP
+
+    /*`canvas winding:yes~canvas fp:data:image/png;base64,${Buffer.from(
         Math.random().toString()
-    ).toString("base64")}`; //canvasFp || ''; // Canvas Fingerprint
+    ).toString("base64")}`;*/ //canvasFp || ''; // Canvas Fingerprint
+
     fingerprint["FR"] = false; // Fake Resolution
     fingerprint["FOS"] = false; // Fake Operating System
     fingerprint["FB"] = false; // Fake Browser
-    fingerprint["JSF"] = ''; //fingerprint["JSF"].filter(() => Math.random() > 0.5);
-    fingerprint["P"] = fingerprint["P"].filter(() => Math.random() > 0.5);
-    fingerprint["T"] = [
+
+    // Standard Windows fonts
+    fingerprint["JSF"] = ['Arial', 'Arial Black', 'Arial Narrow', 'Book Antiqua', 'Bookman Old Style', 'Calibri', 'Cambria', 'Cambria Math', 'Century', 'Century Gothic', 'Century Schoolbook', 'Comic Sans MS', 'Consolas', 'Courier', 'Courier New', 'Garamond', 'Georgia', 'Helvetica', 'Impact', 'Lucida Bright', 'Lucida Calligraphy', 'Lucida Console', 'Lucida Fax', 'Lucida Handwriting', 'Lucida Sans', 'Lucida Sans Typewriter', 'Lucida Sans Unicode', 'Microsoft Sans Serif', 'Monotype Corsiva', 'MS Gothic', 'MS PGothic', 'MS Reference Sans Serif', 'MS Sans Serif', 'MS Serif', 'Palatino Linotype', 'Segoe Print', 'Segoe Script', 'Segoe UI', 'Segoe UI Light', 'Segoe UI Semibold', 'Segoe UI Symbol', 'Tahoma', 'Times', 'Times New Roman', 'Trebuchet MS', 'Verdana', 'Wingdings', 'Wingdings 2', 'Wingdings 3']; //fingerprint["JSF"].filter(() => Math.random() > 0.5);
+
+    //fingerprint["P"] = fingerprint["P"].filter(() => Math.random() > 0.5);
+    let randomizeTouch = Math.random() > 0.5;
+    fingerprint["T"] = randomizeTouch ? [
         Math.floor(Math.random() * 8),
-        Math.random() > 0.5,
-        Math.random() > 0.5,
-    ];
-    fingerprint["H"] = 2 ** Math.floor(Math.random() * 6);
+        false, //Math.random() > 0.5,
+        false //Math.random() > 0.5,
+    ] : [0, false, false]; // Touch Support [maxTouchPoints, touchEvent emit support, is touchStart listened]
+    fingerprint["H"] = 2 ** Math.floor(Math.random() * 3);
     fingerprint["SWF"] = fingerprint["SWF"]; // RIP Flash
-    
+
     return fingerprint;
 }
 
