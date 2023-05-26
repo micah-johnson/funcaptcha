@@ -65,11 +65,11 @@ export abstract class Challenge {
         this.imgs = data.game_data.customGUI._challenge_imgs.map(async (v) => {
             let req = await request(v, {
                 method: "GET",
-                path: undefined,
+                //path: undefined,
                 headers: {
                     "User-Agent": this.userAgent,
-                },
-            });
+                }
+            }, this.proxy, true);
             return req.body;
         });
 
