@@ -61,7 +61,7 @@ export abstract class Challenge {
         this.userAgent = challengeOptions.userAgent;
         this.proxy = challengeOptions.proxy;
 
-        // Preload images
+        // Preload images (one image at a time)
         let imgResolve: ((buf: Buffer) => void)[] = [];
         this.imgs = new Array(data.game_data.customGUI._challenge_imgs.length).fill(0);
         for (let i = 0; i < this.imgs.length; i++) {
@@ -78,7 +78,7 @@ export abstract class Challenge {
                     headers: {
                         "User-Agent": this.userAgent,
                     }
-                }, this.proxy, true);
+                }, this.proxy);
                 imgResolve[i](req.body);
 
                 await new Promise(r => setTimeout(r, 1000));
@@ -91,12 +91,12 @@ export abstract class Challenge {
         }
     }
 
-    async getImage(): Promise<Buffer> {
-        let img = await this.imgs[this.wave];
+    async getImage(wave?: number): Promise<Buffer> {
+        let img = await this.imgs[typeof wave === "number" ? wave : this.wave];
         try {
             JSON.parse(img.toString()); // Image is encrypted
             img = Buffer.from(
-                await crypt.decrypt(img.toString(), await this.getKey()),
+                crypt.decrypt(img.toString(), await this.getKey()),
                 "base64"
             );
         } catch (err) {

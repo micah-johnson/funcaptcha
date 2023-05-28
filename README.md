@@ -58,6 +58,9 @@ await challenge.answer(51.4) // You can input the raw angle as well (clockwise, 
 
 // For game type 3, where you have to pick one of 6 tiles
 await challenge.answer(2) // 0-5, please see https://github.com/noahcoolboy/roblox-funcaptcha/raw/master/img.gif
+
+// For game type 4, where you have to pick one of 6 tiles that matches the image
+await challenge.answer(2) // 0-5, please see https://i.imgur.com/Zhcp7Cw.png
 ```
 
 ## Full Example

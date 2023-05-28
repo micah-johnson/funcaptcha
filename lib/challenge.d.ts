@@ -49,7 +49,7 @@ export declare abstract class Challenge {
     protected userAgent: string;
     protected proxy: string;
     constructor(data: ChallengeData, challengeOptions: ChallengeOptions);
-    getImage(): Promise<Buffer>;
+    getImage(wave?: number): Promise<Buffer>;
     protected getKey(): Promise<string>;
     abstract answer(answer: number): Promise<AnswerResponse>;
     get gameType(): number;
