@@ -1,7 +1,6 @@
 import * as http2 from "http2-wrapper";
 import { request, ProxyAgent } from "undici";
 import type Dispatcher from "undici/types/dispatcher";
-import * as tls from "tls";
 //import { SocksClient } from "socks";
 
 const agentConnectionTable = new Map<string, http2.Agent>();
@@ -11,12 +10,12 @@ async function req<T extends boolean>(
     options: T extends true ?
         http2.RequestOptions & { body?: string } :
         T extends false ?
-        Omit<Dispatcher.RequestOptions, 'origin' | 'path' | 'method'> & Partial<Pick<Dispatcher.RequestOptions, 'method'>> :
-        never,
+            Omit<Dispatcher.RequestOptions, 'origin' | 'path' | 'method'> & Partial<Pick<Dispatcher.RequestOptions, 'method'>> :
+            never,
     proxy?: string,
-    http1Only: T = false as T
+    http1: T = false as T
 ) {
-    if (http1Only) {
+    if (http1) {
         let auth = undefined;
         if (proxy) {
             let proxyUrl = new URL(proxy);
@@ -40,48 +39,6 @@ async function req<T extends boolean>(
             status: req.statusCode
         };
     } else {
-        const resolveAlpnProxy = new URL('https://username:password@localhost:8000');
-        const connect = async (options: tls.ConnectionOptions, callback: () => void) => new Promise<tls.TLSSocket>((resolve, reject) => {
-            const host = `${options.host}:${options.port}`;
-
-            (async () => {
-                try {
-                    const request = await http2.auto(resolveAlpnProxy, {
-                        method: 'CONNECT',
-                        headers: {
-                            host
-                        },
-                        path: host
-                    });
-
-                    request.end();
-
-                    request.once('error', reject);
-
-                    request.once('connect', (response, socket, head) => {
-                        if (head.length > 0) {
-                            reject(new Error(`Unexpected data before CONNECT tunnel: ${head.length} bytes`));
-
-                            socket.destroy();
-                            return;
-                        }
-
-                        const tlsSocket = tls.connect({
-                            ...options,
-                            socket
-                        }, callback);
-
-                        resolve(tlsSocket);
-                    });
-                } catch (error) {
-                    reject(error);
-                }
-            })();
-        });
-
-        // This is required to prevent leaking real IP address on ALPN negotiation
-        const resolveProtocol = http2.auto.createResolveProtocol(new Map(), new Map(), connect);
-
         let agent: http2.Agent | undefined = undefined;
         if (proxy) {
             // proxy is expected to be a http proxy
@@ -98,9 +55,8 @@ async function req<T extends boolean>(
         }
 
         //@ts-ignore
-        let req = await http2.auto(url, {
+        let req = http2.request(url, {
             agent,
-            resolveProtocol,
             ...options
         });
         if (options.body) req.write(options.body);
