@@ -44,7 +44,10 @@ console.log(session.getEmbedUrl())
 One session can get you 10 funcaptcha challenges, you will have to get another session after that.
 ```js
 let challenge = await session.getChallenge()
-// Please view https://pastebin.com/raw/Gi6yKwyD to see all the data you can find 
+// challenge will be null if this token does not require a challenge.
+// You can also check for session.passed to see if this token requires a challenge or not.
+
+// You can check out https://pastebin.com/raw/Gi6yKwyD to see all the data you can find (data is for game type 3).
 console.log(challenge.data.game_data.game_variant)
 console.log(challenge.data.game_data.customGUI.api_breaker)
 
@@ -86,12 +89,14 @@ fun.getToken({
 }).then(async token => { 
     let session = new fun.Session(token)
     let challenge = await session.getChallenge()
-    console.log(challenge.data.game_data.game_variant)
-    console.log(challenge.data.game_data.customGUI.api_breaker)
-    
-    for(let x = 0; x < challenge.data.game_data.waves; x++) {
-        fs.writeFileSync(`${x}.gif`, await challenge.getImage())
-        console.log(await challenge.answer(parseInt(await ask("Answer: "))))
+    if (challenge) {
+        console.log(challenge.data.game_data.game_variant)
+        console.log(challenge.data.game_data.customGUI.api_breaker)
+        
+        for(let x = 0; x < challenge.data.game_data.waves; x++) {
+            fs.writeFileSync(`${x}.gif`, await challenge.getImage())
+            console.log(await challenge.answer(parseInt(await ask("Answer: "))))
+        }
     }
     console.log("Done!")
 })
