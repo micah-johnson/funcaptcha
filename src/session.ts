@@ -27,6 +27,9 @@ export interface TokenInfo {
     // Enable touch biometrics
     tbio: boolean;
 
+    // Is passed without challenge
+    sup?: string;
+
     challenge_url_cdn: string;
 }
 
@@ -45,6 +48,7 @@ let parseToken = (token: string): TokenInfo =>
 export class Session {
     public token: string;
     public tokenInfo: TokenInfo;
+    public passed: boolean = false;
     private tokenRaw: GetTokenResult;
     private userAgent: string;
     private proxy: string;
@@ -64,11 +68,15 @@ export class Session {
 
         this.tokenInfo = parseToken(this.token);
         this.tokenInfo.mbio = typeof(token) !== "string" ? token.mbio ?? false : false
+        this.passed = this.tokenInfo.sup === "1";
         this.userAgent = sessionOptions?.userAgent || util.DEFAULT_USER_AGENT;
         this.proxy = sessionOptions?.proxy;
     }
 
     async getChallenge(): Promise<Challenge | null> {
+        // Do not attempt to get challenge if already passed
+        if (this.passed) return null;
+
         const requestData = {
             token: this.tokenInfo.token,
             sid: this.tokenInfo.r,
@@ -121,17 +129,17 @@ export class Session {
             return new Challenge1(data, {
                 proxy: this.proxy,
                 userAgent: this.userAgent,
-            });
+            }, this);
         } else if (data.game_data.gameType == 3) {
             return new Challenge3(data, {
                 proxy: this.proxy,
                 userAgent: this.userAgent,
-            });
+            }, this);
         } else if (data.game_data.gameType == 4) {
             return new Challenge4(data, {
                 proxy: this.proxy,
                 userAgent: this.userAgent,
-            });
+            }, this);
         } else {
             throw new Error(
                 "Unsupported game type: " + data.game_data.gameType

@@ -3,6 +3,7 @@ import { TokenInfo } from "./session";
 import util from "./util";
 import crypt from "./crypt";
 import { assert } from "console";
+import type { Session } from "./session";
 
 interface ChallengeOptions {
     userAgent?: string;
@@ -56,7 +57,11 @@ export abstract class Challenge {
     protected userAgent: string;
     protected proxy: string;
 
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions) {
+    get solved() {
+        return this.session.passed;
+    }
+
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, public session: Session) {
         this.data = data;
         this.userAgent = challengeOptions.userAgent;
         this.proxy = challengeOptions.proxy;
@@ -152,8 +157,8 @@ export class Challenge1 extends Challenge {
     private answerHistory = [];
     public increment;
 
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions) {
-        super(data, challengeOptions);
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session) {
+        super(data, challengeOptions, session);
 
         // But WHY?!
         let clr = data.game_data.customGUI._guiFontColr
@@ -192,9 +197,14 @@ export class Challenge1 extends Challenge {
             },
             this.proxy
         );
-        let reqData = JSON.parse(req.body.toString());
+        let reqData = JSON.parse(req.body.toString()) as AnswerResponse;
         this.key = reqData.decryption_key || "";
         this.wave++;
+
+        if (reqData.solved) {
+            this.session.passed = true;
+        }
+
         return reqData;
     }
 }
@@ -202,8 +212,8 @@ export class Challenge1 extends Challenge {
 export class Challenge3 extends Challenge {
     private answerHistory = [];
 
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions) {
-        super(data, challengeOptions);
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session) {
+        super(data, challengeOptions, session);
     }
 
     async answer(tile: number): Promise<AnswerResponse> {
@@ -265,9 +275,14 @@ export class Challenge3 extends Challenge {
             },
             this.proxy
         );
-        let reqData = JSON.parse(req.body.toString());
+        let reqData = JSON.parse(req.body.toString()) as AnswerResponse;
         this.key = reqData.decryption_key || "";
         this.wave++;
+
+        if (reqData.solved) {
+            this.session.passed = true;
+        }
+
         return reqData;
     }
 }
@@ -275,8 +290,8 @@ export class Challenge3 extends Challenge {
 export class Challenge4 extends Challenge {
     private answerHistory = [];
 
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions) {
-        super(data, challengeOptions);
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session) {
+        super(data, challengeOptions, session);
     }
 
     async answer(tile: number): Promise<AnswerResponse> {
@@ -327,9 +342,14 @@ export class Challenge4 extends Challenge {
             },
             this.proxy
         );
-        let reqData = JSON.parse(req.body.toString());
+        let reqData = JSON.parse(req.body.toString()) as AnswerResponse;
         this.key = reqData.decryption_key || "";
         this.wave++;
+
+        if (reqData.solved) {
+            this.session.passed = true;
+        }
+
         return reqData;
     }
 

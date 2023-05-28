@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { TokenInfo } from "./session";
+import type { Session } from "./session";
 interface ChallengeOptions {
     userAgent?: string;
     proxy?: string;
@@ -42,13 +43,15 @@ interface AnswerResponse {
     time_end_seconds?: number;
 }
 export declare abstract class Challenge {
+    session: Session;
     data: ChallengeData;
     imgs: Promise<Buffer>[];
     wave: number;
     protected key: string;
     protected userAgent: string;
     protected proxy: string;
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions);
+    get solved(): boolean;
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session);
     getImage(wave?: number): Promise<Buffer>;
     protected getKey(): Promise<string>;
     abstract answer(answer: number): Promise<AnswerResponse>;
@@ -60,18 +63,18 @@ export declare abstract class Challenge {
 export declare class Challenge1 extends Challenge {
     private answerHistory;
     increment: any;
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions);
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session);
     private round;
     answer(answer: number): Promise<AnswerResponse>;
 }
 export declare class Challenge3 extends Challenge {
     private answerHistory;
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions);
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session);
     answer(tile: number): Promise<AnswerResponse>;
 }
 export declare class Challenge4 extends Challenge {
     private answerHistory;
-    constructor(data: ChallengeData, challengeOptions: ChallengeOptions);
+    constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session);
     answer(tile: number): Promise<AnswerResponse>;
     get instruction(): string;
 }
