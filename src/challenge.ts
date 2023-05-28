@@ -62,18 +62,30 @@ export abstract class Challenge {
         this.proxy = challengeOptions.proxy;
 
         // Preload images
-        this.imgs = data.game_data.customGUI._challenge_imgs.map(async (v) => {
-            let req = await request(v, {
-                method: "GET",
-                //path: undefined,
-                headers: {
-                    "User-Agent": this.userAgent,
-                }
-            }, this.proxy, true);
-            return req.body;
-        });
+        let imgResolve: ((buf: Buffer) => void)[] = [];
+        this.imgs = new Array(data.game_data.customGUI._challenge_imgs.length).fill(0);
+        for (let i = 0; i < this.imgs.length; i++) {
+            this.imgs[i] = new Promise((resolve) => {
+                imgResolve.push(resolve);
+            });
+        }
 
-        if(data.game_data.customGUI.encrypted_mode) {
+        (async () => {
+            for (let i = 0; i < this.imgs.length; i++) {
+                let url = data.game_data.customGUI._challenge_imgs[i];
+                let req = await request(url, {
+                    method: "GET",
+                    headers: {
+                        "User-Agent": this.userAgent,
+                    }
+                }, this.proxy, true);
+                imgResolve[i](req.body);
+
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        })();
+
+        if (data.game_data.customGUI.encrypted_mode) {
             // Preload decryption key
             this.getKey();
         }
@@ -122,7 +134,7 @@ export abstract class Challenge {
     get gameType() {
         return this.data.game_data.gameType;
     }
-    
+
     get variant() {
         return this.data.game_data.game_variant;
     }
@@ -142,7 +154,7 @@ export class Challenge1 extends Challenge {
 
     constructor(data: ChallengeData, challengeOptions: ChallengeOptions) {
         super(data, challengeOptions);
-        
+
         // But WHY?!
         let clr = data.game_data.customGUI._guiFontColr
         this.increment = parseInt(clr ? clr.replace("#", "").substring(3) : "28", 16)
@@ -154,7 +166,7 @@ export class Challenge1 extends Challenge {
     }
 
     async answer(answer: number): Promise<AnswerResponse> {
-        if(answer >= 0 && answer <= Math.round(360 / 51.4) - 1)
+        if (answer >= 0 && answer <= Math.round(360 / 51.4) - 1)
             this.answerHistory.push(this.round(answer * this.increment));
         else
             this.answerHistory.push(this.round(answer))
@@ -199,7 +211,7 @@ export class Challenge3 extends Challenge {
         const apiBreaker = this.data.game_data.customGUI.api_breaker
         let pos: number[] | Object = util.tileToLoc(tile);
         // @ts-ignore
-        if (typeof(apiBreaker) === "object" && apiBreaker.key && apiBreaker.value) {
+        if (typeof (apiBreaker) === "object" && apiBreaker.key && apiBreaker.value) {
             pos = {
                 x: pos[0],
                 y: pos[1],
@@ -213,7 +225,7 @@ export class Challenge3 extends Challenge {
                 // @ts-ignore
                 apiBreakerFunctions.key[apiBreaker.key](
                     // @ts-ignore
-                    util.breakerValue(apiBreaker.value || [ "alpha" ], apiBreakerFunctions.value)(pos)
+                    util.breakerValue(apiBreaker.value || ["alpha"], apiBreakerFunctions.value)(pos)
                 )
             );
         } else {
@@ -223,7 +235,7 @@ export class Challenge3 extends Challenge {
                 ](pos)
             );
         }
-        
+
         let encrypted = await crypt.encrypt(
             JSON.stringify(this.answerHistory),
             this.data.session_token
@@ -272,20 +284,20 @@ export class Challenge4 extends Challenge {
         const apiBreaker = this.data.game_data.customGUI.api_breaker
 
         // @ts-ignore
-        if (typeof(apiBreaker) === "object" && apiBreaker.key && apiBreaker.value) {
+        if (typeof (apiBreaker) === "object" && apiBreaker.key && apiBreaker.value) {
             const apiBreakerFunctions = util.apiBreakers2.type_4
 
             this.answerHistory.push(
                 // @ts-ignore
                 apiBreakerFunctions.key[apiBreaker.key](
                     // @ts-ignore
-                    util.breakerValue(apiBreaker.value || [ "alpha" ], apiBreakerFunctions.value)({ index: tile })
+                    util.breakerValue(apiBreaker.value || ["alpha"], apiBreakerFunctions.value)({ index: tile })
                 )
             );
         } else {
             throw "Invalid API breaker"
         }
-        
+
         let encrypted = await crypt.encrypt(
             JSON.stringify(this.answerHistory),
             this.data.session_token
