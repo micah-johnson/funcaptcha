@@ -26,6 +26,7 @@
         "http2-wrapper": "^2.2.0",
         "pngjs": "^7.0.0",
         "socks": "^2.7.1",
-        "undici": "^5.22.1"
+        "undici": "^5.22.1",
+        "windmouse": "^1.0.5"
     }
 }

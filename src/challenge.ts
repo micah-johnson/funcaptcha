@@ -4,6 +4,7 @@ import util from "./util";
 import crypt from "./crypt";
 import { assert } from "console";
 import type { Session } from "./session";
+import WindMouse from "windmouse";
 
 interface ChallengeOptions {
     userAgent?: string;
@@ -39,6 +40,12 @@ interface ChallengeData {
     string_table_prefixes: string[]
 }
 
+enum MouseBIOEnum {
+    MOVE = 0,
+    DOWN = 1,
+    UP = 2
+}
+
 interface AnswerResponse {
     response: "not answered" | "answered";
     solved?: boolean;
@@ -56,6 +63,8 @@ export abstract class Challenge {
     protected key: string;
     protected userAgent: string;
     protected proxy: string;
+    protected fakeMLastPos: [x: number, y: number] = [0, 0];
+    protected BIOT = Date.now();
 
     get solved() {
         return this.session.passed;
@@ -292,6 +301,11 @@ export class Challenge4 extends Challenge {
 
     constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session) {
         super(data, challengeOptions, session);
+
+        // always start from top or left edge
+        this.fakeMLastPos = Math.round(Math.random()) ?
+            [Math.round(Math.random() * 250), 0] :
+            [0, Math.round(Math.random() * 200)];
     }
 
     async answer(tile: number): Promise<AnswerResponse> {
@@ -319,6 +333,81 @@ export class Challenge4 extends Challenge {
         );
         let requestedId = await crypt.encrypt(JSON.stringify({}), `REQUESTED${this.data.session_token}ID`);
         let { cookie: tCookie, value: tValue } = util.getTimestamp();
+
+        let fakeMBIO: [deltaT: number, type: MouseBIOEnum, x: number, y: number][] = [];
+
+        let fakeMouse = new WindMouse(Math.floor(Math.random() * 10));
+        let waitTimes = 0;
+        if (tile !== 0) {
+            let nextButtonPos = [
+                Math.floor(Math.random() * 18) + 237,
+                Math.floor(Math.random() * 18) + 153
+            ] as [number, number];
+            let points = await fakeMouse.GeneratePoints({
+                startX: this.fakeMLastPos[0],
+                startY: this.fakeMLastPos[1],
+                endX: nextButtonPos[0],
+                endY: nextButtonPos[1],
+                gravity: Math.ceil(Math.random() * 2) + 8,
+                wind: Math.ceil(Math.random() * 2) + 4,
+                minWait: 2,
+                maxWait: 8,
+                maxStep: 6,
+                targetArea: 4,
+            });
+
+            fakeMBIO.push(...points.map(v => (waitTimes = v[2], [(Date.now() - this.BIOT) + v[2], MouseBIOEnum.MOVE, v[0], v[1]]) as [number, number, number, number]));
+
+            this.fakeMLastPos = nextButtonPos;
+            // mouse click last 25+-5ms (click "tile" times)
+            for (let i = 0; i < tile; i++) {
+                let clickTime = Math.floor(Math.random() * 10) + 20;
+                fakeMBIO.push([(Date.now() - this.BIOT) + waitTimes, MouseBIOEnum.DOWN, this.fakeMLastPos[0], this.fakeMLastPos[1]]);
+                waitTimes += clickTime;
+                fakeMBIO.push([(Date.now() - this.BIOT) + waitTimes, MouseBIOEnum.UP, this.fakeMLastPos[0], this.fakeMLastPos[1]]);
+                // wait 350+-50ms between clicks (time to read)
+                waitTimes += Math.floor(Math.random() * 100) + 300;
+            }
+        }
+
+        // move mouse to next button (avoid button edge by 4px)
+        /*
+        height: 30
+        width: 266.3999938964844
+        x: 0
+        y: 199.63333129882812
+        */
+        let nextButtonPos = [
+            Math.floor(Math.random() * 258) + 4,
+            Math.floor(Math.random() * 26) + 204
+        ] as [number, number];
+        let points = await fakeMouse.GeneratePoints({
+            startX: this.fakeMLastPos[0],
+            startY: this.fakeMLastPos[1],
+            endX: nextButtonPos[0],
+            endY: nextButtonPos[1],
+            gravity: Math.ceil(Math.random() * 2) + 8,
+            wind: Math.ceil(Math.random() * 2) + 4,
+            minWait: 2,
+            maxWait: 8,
+            maxStep: 6,
+            targetArea: 4
+        });
+
+        fakeMBIO.push(...points.map(v => [(Date.now() - this.BIOT) + v[2], MouseBIOEnum.MOVE, v[0], v[1]] as [number, number, number, number]));
+        waitTimes += points.at(-1)[2];
+        // click
+        let clickTime = Math.floor(Math.random() * 10) + 20;
+        fakeMBIO.push([(Date.now() - this.BIOT) + waitTimes, MouseBIOEnum.DOWN, this.fakeMLastPos[0], this.fakeMLastPos[1]]);
+        waitTimes += clickTime;
+        fakeMBIO.push([(Date.now() - this.BIOT) + waitTimes, MouseBIOEnum.UP, this.fakeMLastPos[0], this.fakeMLastPos[1]]);
+
+        // mbio maximum length is 149
+        fakeMBIO.splice(149);
+        this.fakeMLastPos = nextButtonPos;
+
+        await new Promise(r => setTimeout(r, waitTimes));
+
         let req = await request(
             this.data.tokenInfo.surl,
             {
@@ -337,7 +426,11 @@ export class Challenge4 extends Challenge {
                     guess: encrypted,
                     analytics_tier: this.data.tokenInfo.at,
                     sid: this.data.tokenInfo.r,
-                    bio: this.data.tokenInfo.mbio && "eyJtYmlvIjoiMTI1MCwwLDE0NywyMDQ7MTg5NCwwLDE1MSwyMDA7MTk2MCwxLDE1MiwxOTk7MjAyOSwyLDE1MiwxOTk7MjU3NSwwLDE1NSwxOTU7MjU4NSwwLDE1NiwxOTA7MjU5NSwwLDE1OCwxODU7MjYwNCwwLDE1OSwxODA7MjYxMywwLDE2MCwxNzU7MjYyMSwwLDE2MSwxNzA7MjYzMCwwLDE2MywxNjU7MjY0MCwwLDE2NCwxNjA7MjY1MCwwLDE2NSwxNTU7MjY2NCwwLDE2NiwxNTA7MjY3NywwLDE2NiwxNDQ7MjY5NCwwLDE2NywxMzk7MjcyMCwwLDE2NywxMzM7Mjc1NCwwLDE2NywxMjc7Mjc4MywwLDE2NywxMjE7MjgxMiwwLDE2NywxMTU7Mjg0MywwLDE2NywxMDk7Mjg2MywwLDE2NywxMDM7Mjg3NSwwLDE2Niw5ODsyOTA1LDAsMTY1LDkzOzMyMzIsMCwxNjUsOTk7MzI2MiwwLDE2NSwxMDU7MzI5OSwwLDE2NCwxMTA7MzM0MCwwLDE2MSwxMTU7MzM3MiwwLDE1NywxMjA7MzM5NSwwLDE1MywxMjQ7MzQwOCwwLDE0OCwxMjc7MzQyMCwwLDE0MywxMzA7MzQyOSwwLDEzOCwxMzE7MzQ0MSwwLDEzMywxMzQ7MzQ1MCwwLDEyOCwxMzU7MzQ2MSwwLDEyMywxMzg7MzQ3NiwwLDExOCwxNDA7MzQ4OSwwLDExMywxNDI7MzUwMywwLDEwOCwxNDM7MzUxOCwwLDEwMywxNDQ7MzUzNCwwLDk4LDE0NTszNTU2LDAsOTMsMTQ2OzM2MTUsMCw4OCwxNDg7MzY2MiwwLDgzLDE1MTszNjgzLDAsNzgsMTU0OzM3MDEsMCw3MywxNTc7MzcyNSwwLDY5LDE2MTszNzkzLDEsNjgsMTYyOzM4NTEsMiw2OCwxNjI7IiwidGJpbyI6IiIsImtiaW8iOiIifQ=="
+                    bio: this.data.tokenInfo.mbio && Buffer.from(JSON.stringify({
+                        mbio: fakeMBIO.map(v => v.join(",")).join(";"),
+                        tbio: "",
+                        kbio: ""
+                    })).toString("base64")
                 }),
             },
             this.proxy
@@ -345,6 +438,9 @@ export class Challenge4 extends Challenge {
         let reqData = JSON.parse(req.body.toString()) as AnswerResponse;
         this.key = reqData.decryption_key || "";
         this.wave++;
+
+        // reset fake mouse timer
+        this.BIOT = Date.now();
 
         if (reqData.solved) {
             this.session.passed = true;

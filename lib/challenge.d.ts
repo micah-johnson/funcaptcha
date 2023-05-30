@@ -50,6 +50,8 @@ export declare abstract class Challenge {
     protected key: string;
     protected userAgent: string;
     protected proxy: string;
+    protected fakeMLastPos: [x: number, y: number];
+    protected BIOT: number;
     get solved(): boolean;
     constructor(data: ChallengeData, challengeOptions: ChallengeOptions, session: Session);
     getImage(wave?: number): Promise<Buffer>;
