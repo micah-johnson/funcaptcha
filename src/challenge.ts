@@ -75,6 +75,8 @@ export abstract class Challenge {
         this.userAgent = challengeOptions.userAgent;
         this.proxy = challengeOptions.proxy;
 
+        const tokenData = data.tokenInfo;
+
         // Preload images (one image at a time)
         let imgResolve: ((buf: Buffer) => void)[] = [];
         this.imgs = new Array(data.game_data.customGUI._challenge_imgs.length).fill(0);
@@ -91,6 +93,7 @@ export abstract class Challenge {
                     method: "GET",
                     headers: {
                         "User-Agent": this.userAgent,
+                        "Referer": `https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.12.0/standard/index.html?session=${this.data.session_token}&r=${tokenData.r}&meta=${tokenData.meta}&metabgclr=${tokenData.metabgclr}&metaiconclr=${encodeURIComponent(tokenData.metaiconclr)}&maintxtclr=${encodeURIComponent(tokenData.maintxtclr)}&guitextcolor=${encodeURIComponent(tokenData.guitextcolor)}&pk=${tokenData.pk}&at=${tokenData.at}&ag=${tokenData.ag}&cdn_url=${encodeURIComponent(tokenData.cdn_url)}&lurl=${encodeURIComponent(tokenData.lurl)}&surl=${encodeURIComponent(tokenData.surl)}&smurl=${encodeURIComponent(tokenData.smurl)}&theme=default`
                     }
                 }, this.proxy);
                 imgResolve[i](req.body);
@@ -320,7 +323,7 @@ export class Challenge4 extends Challenge {
                 // @ts-ignore
                 apiBreakerFunctions.key[apiBreaker.key](
                     // @ts-ignore
-                    util.breakerValue(apiBreaker.value || ["alpha"], apiBreakerFunctions.value)({ index: tile })
+                    util.breakerValue(apiBreaker.value, apiBreakerFunctions.value)({ index: tile })
                 )
             );
         } else {
@@ -331,7 +334,7 @@ export class Challenge4 extends Challenge {
             JSON.stringify(this.answerHistory),
             this.data.session_token
         );
-        let requestedId = await crypt.encrypt(JSON.stringify({}), `REQUESTED${this.data.session_token}ID`);
+        let requestedId = await crypt.encrypt(JSON.stringify({ sc: [ 17 + Math.ceil(Math.random() * 268), 198 + Math.ceil(Math.random() * 30) ] }), `REQUESTED${this.data.session_token}ID`);
         let { cookie: tCookie, value: tValue } = util.getTimestamp();
 
         let fakeMBIO: [deltaT: number, type: MouseBIOEnum, x: number, y: number][] = [];
@@ -408,30 +411,39 @@ export class Challenge4 extends Challenge {
 
         await new Promise(r => setTimeout(r, waitTimes));
 
+        const tokenData = this.data.tokenInfo
+
+        const formData = {
+            session_token: this.data.session_token,
+            game_token: this.data.challengeID,
+            sid: tokenData.r,
+            guess: encrypted,
+            render_type: "canvas",
+            analytics_tier: tokenData.at,
+            bio: tokenData.mbio && Buffer.from(JSON.stringify({
+                mbio: fakeMBIO.map(v => v.join(",")).join(";"),
+                tbio: "",
+                kbio: ""
+            })).toString("base64")
+        }
+
+        const headers = {
+            "User-Agent": this.userAgent,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Newrelic-Timestamp": tValue,
+            "X-Requested-ID": requestedId,
+            "Cookie": tCookie,
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": `https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.12.0/standard/index.html?session=${this.data.session_token}&r=${tokenData.r}&meta=${tokenData.meta}&metabgclr=${tokenData.metabgclr}&metaiconclr=${encodeURIComponent(tokenData.metaiconclr)}&maintxtclr=${encodeURIComponent(tokenData.maintxtclr)}&guitextcolor=${encodeURIComponent(tokenData.guitextcolor)}&pk=${tokenData.pk}&at=${tokenData.at}&ag=${tokenData.ag}&cdn_url=${encodeURIComponent(tokenData.cdn_url)}&lurl=${encodeURIComponent(tokenData.lurl)}&surl=${encodeURIComponent(tokenData.surl)}&smurl=${encodeURIComponent(tokenData.smurl)}&theme=default`,
+        }
+
         let req = await request(
             this.data.tokenInfo.surl,
             {
                 method: "POST",
                 path: "/fc/ca/",
-                headers: {
-                    "User-Agent": this.userAgent,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Newrelic-Timestamp": tValue,
-                    "X-Requested-ID": requestedId,
-                    "Cookie": tCookie,
-                },
-                body: util.constructFormData({
-                    session_token: this.data.session_token,
-                    game_token: this.data.challengeID,
-                    guess: encrypted,
-                    analytics_tier: this.data.tokenInfo.at,
-                    sid: this.data.tokenInfo.r,
-                    bio: this.data.tokenInfo.mbio && Buffer.from(JSON.stringify({
-                        mbio: fakeMBIO.map(v => v.join(",")).join(";"),
-                        tbio: "",
-                        kbio: ""
-                    })).toString("base64")
-                }),
+                headers,
+                body: util.constructFormData(formData),
             },
             this.proxy
         );
