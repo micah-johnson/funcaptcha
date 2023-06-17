@@ -151,9 +151,32 @@ export class Session {
     }
 
     getEmbedUrl(): string {
+        // infer game version from rawToken
+        let gameVersion = "1.12.1";
+        if (this.tokenRaw) {
+            gameVersion = this.tokenRaw.challenge_url_cdn.match(/ec-game-core\/bootstrap\/(.*)\/standard/)?.[1] ?? gameVersion;
+        }
+
+        let ti = this.tokenInfo;
+        let newQuery = {
+            session: ti.token,
+            r: ti.r,
+            meta: ti.meta,
+            metabgclr: ti.metabgclr,
+            metaiconclr: ti.metaiconclr,
+            maintxtclr: ti.maintxtclr,
+            guitextcolor: ti.guitextcolor,
+            pk: ti.pk,
+            at: ti.at,
+            ag: ti.ag,
+            cdn_url: ti.cdn_url,
+            lurl: ti.lurl,
+            surl: ti.surl,
+            smurl: ti.smurl,
+            theme: "default"
+        }
+
         //https://client-api.arkoselabs.com/fc/assets/ec-game-core/game-core/1.12.0/standard/index.html
-        return `${this.tokenInfo.surl}/fc/assets/ec-game-core/game-core/1.12.0/standard/index.html?${util.constructFormData(
-            this.tokenInfo
-        )}`;
+        return `${this.tokenInfo.surl}/fc/assets/ec-game-core/game-core/${gameVersion}/standard/index.html?${util.constructFormData(newQuery)}`;
     }
 }
