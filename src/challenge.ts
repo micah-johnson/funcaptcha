@@ -265,7 +265,7 @@ export class Challenge3 extends Challenge {
         );
         let requestedId = await crypt.encrypt(JSON.stringify({}), `REQUESTED${this.data.session_token}ID`);
         let { cookie: tCookie, value: tValue } = util.getTimestamp();
-        console.log(`https://client-api.arkoselabs.com/fc/gc/?token=${this.data.token.replace("|", "&")}`)
+        console.log(`https://client-api.arkoselabs.com/fc/gc/?${this.data.token.replace(/|/g, "&")}`)
         let req = await request(
             this.data.tokenInfo.surl,
             {
@@ -277,7 +277,7 @@ export class Challenge3 extends Challenge {
                     "X-Newrelic-Timestamp": tValue,
                     "X-Requested-ID": requestedId,
                     "X-Requested-With": "XMLHttpRequest",
-                    "Referer": `https://client-api.arkoselabs.com/fc/gc/?token=${this.data.token.replace("|", "&")}`
+                    "Referer": `https://client-api.arkoselabs.com/fc/gc/?${this.data.token.replace(/|/g, "&")}`
                 },
                 body: util.constructFormData({
                     session_token: this.data.session_token,
