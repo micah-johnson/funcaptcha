@@ -5,6 +5,7 @@ import crypt from "./crypt";
 import { assert } from "console";
 import type { Session } from "./session";
 import WindMouse from "windmouse";
+import { getToken } from "./api";
 
 interface ChallengeOptions {
     userAgent?: string;
@@ -264,6 +265,7 @@ export class Challenge3 extends Challenge {
         );
         let requestedId = await crypt.encrypt(JSON.stringify({}), `REQUESTED${this.data.session_token}ID`);
         let { cookie: tCookie, value: tValue } = util.getTimestamp();
+        console.log(`https://client-api.arkoselabs.com/fc/gc/?token=${this.data.token.replace("|", "&")}`)
         let req = await request(
             this.data.tokenInfo.surl,
             {
@@ -274,7 +276,8 @@ export class Challenge3 extends Challenge {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Newrelic-Timestamp": tValue,
                     "X-Requested-ID": requestedId,
-                    "Cookie": tCookie,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": `https://client-api.arkoselabs.com/fc/gc/?token=${this.data.token.replace("|", "&")}`
                 },
                 body: util.constructFormData({
                     session_token: this.data.session_token,
