@@ -8,6 +8,7 @@ export interface GetTokenOptions {
         [key: string]: string;
     };
     site?: string;
+    version?: string;
     location?: string;
     proxy?: string;
     canvasFp?: string;

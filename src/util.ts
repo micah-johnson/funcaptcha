@@ -431,7 +431,7 @@ function getBda(userAgent: string, pkey: string, surl: string, referer?: string,
                 },
                 {
                     "key": "window__location_href",
-                    "value": `https://client-api.arkoselabs.com/v2/${pkey}/1.4.3/enforcement.${random()}.html`
+                    "value": referer
                 },
                 {
                     "key": "client_config__surl",
