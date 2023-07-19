@@ -55,7 +55,7 @@ export async function getToken(
 
     if (options.site) {
         options.headers["Origin"] = options.surl
-        options.headers["Referer"] = `${options.surl}/v2/${options.pkey}/1.4.3/enforcement.${util.random()}.html`
+        options.headers["Referer"] = options.headers["referer"] || `${options.surl}/v2/${options.pkey}/1.4.3/enforcement.${util.random()}.html`
     }
     
     let ua = options.headers[Object.keys(options.headers).find(v => v.toLowerCase() == "user-agent")]
