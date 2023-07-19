@@ -9,6 +9,7 @@ export interface GetTokenOptions {
     headers?: { [key: string]: string };
     site?: string;
     // Page URL
+    version?: string; // Captcha Version
     location?: string;
     proxy?: string;
     canvasFp?: string;
@@ -42,6 +43,8 @@ export async function getToken(
         ...options,
     };
 
+    options.version = options.version ?? "1.4.3"
+
     if (!options.headers)
         options.headers = { "User-Agent": util.DEFAULT_USER_AGENT };
     else if (!Object.keys(options.headers).map(v => v.toLowerCase()).includes("user-agent"))
@@ -55,7 +58,7 @@ export async function getToken(
 
     if (options.site) {
         options.headers["Origin"] = options.surl
-        options.headers["Referer"] = options.headers["referer"] || `${options.surl}/v2/${options.pkey}/1.4.3/enforcement.${util.random()}.html`
+        options.headers["Referer"] = options.headers["referer"] || `${options.surl}/v2/${options.pkey}/${options.version}/enforcement.${util.random()}.html`
     }
     
     let ua = options.headers[Object.keys(options.headers).find(v => v.toLowerCase() == "user-agent")]
@@ -70,7 +73,7 @@ export async function getToken(
                 public_key: options.pkey,
                 site: options.site,
                 userbrowser: ua,
-                capi_version: "1.4.3",
+                capi_version: options.version,
                 capi_mode: "inline",
                 style_theme: "default",
                 rnd: Math.random().toString(),
