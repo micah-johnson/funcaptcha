@@ -416,8 +416,9 @@ function getBda(userAgent: string, pkey: string, surl: string, referer?: string,
                 {
                     "key": "window__ancestor_origins",
                     "value": [
-                        "https://www.roblox.com",
-                        "https://www.roblox.com"
+                        "https://iframe.arkoselabs.com",
+                        "https://www.linkedin.com",
+                        "https://www.linkedin.com"
                     ]
                 },
                 {
